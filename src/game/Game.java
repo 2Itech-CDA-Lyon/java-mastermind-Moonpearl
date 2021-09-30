@@ -1,10 +1,6 @@
 package game;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Représente une partie du jeu
@@ -17,7 +13,7 @@ public class Game {
     /**
      * La solution à deviner
      */
-    private char[] solution;
+    private ColorCombination solution;
 
     private Scanner scanner;
 
@@ -27,7 +23,16 @@ public class Game {
     public Game()
     {
         scanner = new Scanner(System.in);
-        solution = new char[] { 'M', 'M', 'C', 'R' };
+        reset();
+    }
+
+    /**
+     * Remet la partie à zéro (lorsque le jeu est lancé ou la partie gagnée)
+     */
+    public void reset()
+    {
+        // Génère une solution au hasard
+        solution = ColorCombination.createRandom();
     }
 
     /**
@@ -54,79 +59,55 @@ public class Game {
     public void update()
     {
         // Attend une saisie utilisateur
-        String userInput = scanner.nextLine();
-        userInput = userInput.toUpperCase();
-        
-        // Valide la saisie utilisateur
-        Pattern pattern = Pattern.compile("^[RVBJCM]{4}$");
-        Matcher matcher = pattern.matcher(userInput);
-        // Si la saisie utilisateur est valide
-        if (matcher.matches()) {
-            char[] proposition = userInput.toCharArray();
-            // Cherche les couleurs bien placées dans la proposition de l'utilisateur
-            int correctCount = 0;
-            for (int i = 0; i < 4; i++) {
-                if (proposition[i] == solution[i]) {
-                    correctCount += 1;
-                }
-            }
-            // Cherche les couleurs absentes de la solution dans la proposition de l'utilisateur
-            int absentCount = 0;
+        String userInput = scanner.nextLine().toUpperCase();
 
-            // Compte le nombre d'occurrences de chaque couleur dans la solution
-            Map<Character, Integer> solutionFrequencies = new HashMap<>() {{
-                put('R', 0);
-                put('V', 0);
-                put('B', 0);
-                put('M', 0);
-                put('J', 0);
-                put('C', 0);
-            }};
-            for (char color : solution) {
-                solutionFrequencies.put(color, solutionFrequencies.get(color) + 1);
-            }
+        try {
+            // Interpréte la saisie de l'utilisateur sous forme de combinaison de couleurs
+            ColorCombination proposition = new ColorCombination(userInput);
 
-            // Compte le nombre d'occurrences de chaque couleur dans la proposition de l'utilisateur
-            Map<Character, Integer> propositionFrequencies = new HashMap<>() {{
-                put('R', 0);
-                put('V', 0);
-                put('B', 0);
-                put('M', 0);
-                put('J', 0);
-                put('C', 0);
-            }};
-            for (char color : proposition) {
-                propositionFrequencies.put(color, propositionFrequencies.get(color) + 1);
-            }
-
-            // Cherche dans la proposition, les couleurs qui sont en trop par rapport à la solution
-            for (char color : new char[] { 'R', 'V', 'B', 'M', 'J', 'C' }) {
-                int excess = propositionFrequencies.get(color) - solutionFrequencies.get(color);
-                if (excess > 0) {
-                    absentCount += excess;
-                }
-            }
-
-            int misplacedCount = 4 - absentCount - correctCount;
+            // Demande à la proposition de l'utilisateur de se comparer avec la solution
+            ComparisonResult result = proposition.compareTo(solution);
 
             // Affiche le résultat de la comparaison pour l'utilisateur
-            for (int i = 0; i < correctCount; i++) {
-                System.out.print("O ");
-            }
-            for (int i = 0; i < misplacedCount; i++) {
-                System.out.print("X ");
-            }
-            for (int i = 0; i < absentCount; i++) {
-                System.out.print("- ");
-            }
+            System.out.print(proposition.generateDisplay());
+            System.out.print("  =>  ");
+            System.out.print(result.generateDisplay());
+            System.out.println();
 
-            System.out.println("");
-
-        // Si la saisie utilisateur n'est pas valide
-        } else {
-            System.out.println("Combinaison invalide!");
+            // Si la proposition de l'utilisateur correspond exactement à la solution
+            if (result.isWinning()) {
+                win();
+            }
         }
-
+        // Si l'utilisateur a rentré une combinaison de couleurs invalide
+        catch (IllegalArgumentException exception) {
+            System.out.println("Combinaison de couleurs invalide!");
+        }
+            
         System.out.println("");
+    }
+
+    /**
+     * Procédure à exécuter lorsque le joueur a gagné la partie
+     */
+    public void win()
+    {
+        System.out.println("Bravo! Vous avez deviné la combinaison!");
+        System.out.println("Voulez-vous rejouer? [O/N]");
+
+        String userInput = scanner.nextLine().toUpperCase();
+
+        switch (userInput) {
+            case "O":
+                reset();
+                break;
+
+            case "N":
+                terminate();
+                break;
+
+            default:
+                throw new RuntimeException("Invalid user input.");
+        }
     }
 }
